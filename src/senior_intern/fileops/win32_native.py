@@ -4,7 +4,7 @@
 
 import ntpath
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Final
 
 from senior_intern.fileops.path_policy import ObjectKind, PathRole
@@ -133,17 +133,17 @@ def _coherent_snapshot(
 
 
 def _ancestor_paths(path: Path) -> tuple[Path, ...]:
-    absolute = Path(ntpath.abspath(str(path)))
+    absolute = PureWindowsPath(ntpath.abspath(str(path)))
     anchor = absolute.anchor
     if not anchor:
         message = "Win32 path must have an absolute anchor"
         raise Win32ProbeBackendError(message)
-    current = Path(anchor)
-    ancestors = [current]
+    current = PureWindowsPath(anchor)
+    ancestors = [Path(str(current))]
     anchor_parts = len(current.parts)
     for component in absolute.parts[anchor_parts:]:
         current /= component
-        ancestors.append(current)
+        ancestors.append(Path(str(current)))
     return tuple(ancestors)
 
 
