@@ -6,7 +6,7 @@ import sqlite3
 from pathlib import Path
 from typing import cast
 
-from senior_intern.core.migrations import apply_migrations
+from senior_intern.core.migrations import apply_migrations, require_supported_schema
 
 
 class DatabaseConfigurationError(RuntimeError):
@@ -32,6 +32,7 @@ def open_database(path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(path, timeout=5.0, isolation_level=None)
     connection.row_factory = sqlite3.Row
     try:
+        require_supported_schema(connection)
         _ = connection.execute("PRAGMA foreign_keys = ON")
         _require_wal(connection)
         _ = connection.execute("PRAGMA synchronous = FULL")

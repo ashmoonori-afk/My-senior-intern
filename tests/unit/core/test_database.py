@@ -67,6 +67,21 @@ def _open_and_close(path: Path) -> None:
     connection.close()
 
 
+def _journal_mode(path: Path) -> str:
+    connection = sqlite3.connect(path)
+    try:
+        row = cast(
+            "tuple[object, ...] | None",
+            connection.execute("PRAGMA journal_mode").fetchone(),
+        )
+        assert row is not None
+        mode = row[0]
+        assert isinstance(mode, str)
+        return mode
+    finally:
+        connection.close()
+
+
 def test_open_database_applies_safety_pragmas(tmp_path: Path) -> None:
     """Every connection uses durable local safety settings."""
     connection = open_database(tmp_path / "senior-intern.db")
@@ -134,7 +149,7 @@ def test_migrations_are_idempotent(tmp_path: Path) -> None:
             value = row[0]
             assert isinstance(value, int)
             versions.append(value)
-        assert versions == [LATEST_SCHEMA_VERSION]
+        assert versions == list(range(1, LATEST_SCHEMA_VERSION + 1))
     finally:
         connection.close()
 
@@ -160,5 +175,7 @@ def test_future_schema_version_fails_closed(tmp_path: Path) -> None:
     finally:
         connection.close()
 
+    assert _journal_mode(database_path) == "delete"
     with pytest.raises(UnsupportedSchemaVersionError, match="newer schema"):
         _open_and_close(database_path)
+    assert _journal_mode(database_path) == "delete"

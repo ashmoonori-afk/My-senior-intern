@@ -11,6 +11,7 @@ RuleId = NewType("RuleId", str)
 FolderTemplateId = NewType("FolderTemplateId", str)
 EvidenceId = NewType("EvidenceId", str)
 TransactionId = NewType("TransactionId", str)
+AuditEventId = NewType("AuditEventId", str)
 
 
 def _parse_opaque_id(value: str, *, field: str, prefix: str) -> str:
@@ -49,3 +50,8 @@ def parse_folder_template_id(value: str) -> FolderTemplateId:
 def parse_transaction_id(value: str) -> TransactionId:
     """Parse an untrusted transaction identifier."""
     return TransactionId(_parse_opaque_id(value, field="transaction_id", prefix="txn"))
+
+
+def parse_audit_event_id(value: str) -> AuditEventId:
+    """Parse an untrusted audit-event identifier."""
+    return AuditEventId(_parse_opaque_id(value, field="audit_event_id", prefix="aud"))
