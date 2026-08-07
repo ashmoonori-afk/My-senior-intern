@@ -1,0 +1,108 @@
+[project]
+name = "my-senior-intern"
+version = "0.1.0"
+description = "Safe local document automation for Windows and macOS"
+readme = "docs/README.en.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "anyio>=4.11.0",
+    "filelock>=3.20.0",
+    "keyring>=25.7.0",
+    "platformdirs>=4.5.0",
+    "pydantic>=2.12.0",
+    "textual>=8.2.0",
+    "typer>=0.21.0",
+]
+
+[project.scripts]
+my-senior-intern = "senior_intern.cli:main"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.38.0",
+    "hypothesis>=6.151.0",
+    "pytest>=9.0.0",
+    "pytest-cov>=7.0.0",
+    "pytest-socket>=0.7.0",
+    "ruff>=0.15.0",
+]
+build = [
+    "pyinstaller>=6.21.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.28.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/senior_intern"]
+
+[tool.basedpyright]
+include = ["src", "tests"]
+exclude = [
+    "**/__pycache__",
+    ".venv",
+    "build",
+    "dist",
+]
+pythonVersion = "3.12"
+typeCheckingMode = "all"
+reportAny = "error"
+reportExplicitAny = "error"
+reportImplicitOverride = "error"
+reportImplicitStringConcatenation = "error"
+reportImportCycles = "error"
+reportMissingTypeStubs = "error"
+reportPrivateUsage = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportUnreachable = "error"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812", # Ruff formatter owns trailing commas.
+    "D203",   # Incompatible with D211.
+    "D213",   # Incompatible with D212.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "ANN",
+    "ARG",
+    "D",
+    "PLR2004",
+    "S101",
+    "SLF001",
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+addopts = [
+    "--strict-config",
+    "--strict-markers",
+    "-ra",
+]
+testpaths = ["tests"]
+xfail_strict = true
+filterwarnings = ["error"]
+markers = [
+    "integration: uses real local operating-system resources",
+    "live: requires the matching host operating system",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["senior_intern"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
