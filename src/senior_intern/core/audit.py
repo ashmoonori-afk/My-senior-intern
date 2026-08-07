@@ -126,11 +126,11 @@ def _last_sequence(cursor: sqlite3.Cursor) -> int:
     return sequence
 
 
-def append_audit_event(
+def insert_audit_event(
     connection: sqlite3.Connection,
     event_input: AuditEventInput,
 ) -> AuditEvent:
-    """Append one digest-linked audit event."""
+    """Insert one digest-linked audit event inside the caller's transaction."""
     parsed_event_id = parse_audit_event_id(str(event_input.event_id))
     parsed_transaction_id = (
         None
@@ -150,53 +150,60 @@ def append_audit_event(
         payload=event_input.payload,
     )
     payload_json = _canonical_json(validated_input.payload)
+    previous_digest = _previous_digest(connection)
+    event_digest = _audit_digest(
+        validated_input,
+        payload_json=payload_json,
+        previous_digest=previous_digest,
+    )
+    cursor = connection.execute(
+        """
+        INSERT INTO audit_events (
+            event_id,
+            event_type,
+            transaction_id,
+            document_id,
+            occurred_at,
+            actor,
+            payload_json,
+            previous_digest,
+            event_digest
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            validated_input.event_id,
+            validated_input.event_type,
+            validated_input.transaction_id,
+            validated_input.document_id,
+            validated_input.occurred_at,
+            validated_input.actor,
+            payload_json,
+            previous_digest,
+            event_digest,
+        ),
+    )
+    return AuditEvent(
+        sequence=_last_sequence(cursor),
+        event_id=validated_input.event_id,
+        event_type=validated_input.event_type,
+        transaction_id=validated_input.transaction_id,
+        document_id=validated_input.document_id,
+        occurred_at=validated_input.occurred_at,
+        actor=validated_input.actor,
+        payload_json=payload_json,
+        previous_digest=previous_digest,
+        event_digest=event_digest,
+    )
 
+
+def append_audit_event(
+    connection: sqlite3.Connection,
+    event_input: AuditEventInput,
+) -> AuditEvent:
+    """Append and commit one digest-linked audit event."""
     _ = connection.execute("BEGIN IMMEDIATE")
     try:
-        previous_digest = _previous_digest(connection)
-        event_digest = _audit_digest(
-            validated_input,
-            payload_json=payload_json,
-            previous_digest=previous_digest,
-        )
-        cursor = connection.execute(
-            """
-            INSERT INTO audit_events (
-                event_id,
-                event_type,
-                transaction_id,
-                document_id,
-                occurred_at,
-                actor,
-                payload_json,
-                previous_digest,
-                event_digest
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                validated_input.event_id,
-                validated_input.event_type,
-                validated_input.transaction_id,
-                validated_input.document_id,
-                validated_input.occurred_at,
-                validated_input.actor,
-                payload_json,
-                previous_digest,
-                event_digest,
-            ),
-        )
-        audit_event = AuditEvent(
-            sequence=_last_sequence(cursor),
-            event_id=validated_input.event_id,
-            event_type=validated_input.event_type,
-            transaction_id=validated_input.transaction_id,
-            document_id=validated_input.document_id,
-            occurred_at=validated_input.occurred_at,
-            actor=validated_input.actor,
-            payload_json=payload_json,
-            previous_digest=previous_digest,
-            event_digest=event_digest,
-        )
+        audit_event = insert_audit_event(connection, event_input)
         connection.commit()
     except BaseException:
         connection.rollback()
