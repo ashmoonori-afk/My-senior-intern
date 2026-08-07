@@ -28,6 +28,9 @@ class TransactionState(StrEnum):
     VERIFIED = "verified"
     COMMITTED = "committed"
     ROLLBACK_REQUIRED = "rollback_required"
+    ROLLING_BACK = "rolling_back"
+    ROLLED_BACK = "rolled_back"
+    ROLLBACK_FAILED = "rollback_failed"
     FAILED = "failed"
 
 

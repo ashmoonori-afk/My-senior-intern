@@ -17,6 +17,7 @@ from senior_intern.fileops.move_commit import (
 )
 from senior_intern.fileops.move_types import (
     DetailValue,
+    MoveContext,
     MovePersistenceError,
     MoveRequest,
     TransitionOutcome,
@@ -53,7 +54,7 @@ def _canonical_detail(detail: Mapping[str, DetailValue]) -> str:
 
 def _insert_event(
     connection: sqlite3.Connection,
-    request: MoveRequest,
+    request: MoveContext,
     state: TransactionState,
     detail: Mapping[str, DetailValue],
 ) -> None:
@@ -80,21 +81,31 @@ def record_plan(
     """Persist the plan before platform inspection or mutation."""
     _ = connection.execute("BEGIN IMMEDIATE")
     try:
-        require_current_document_path(connection, request)
+        evidence = require_current_document_path(connection, request)
         _ = connection.execute(
             """
             INSERT INTO move_transactions (
                 transaction_id, document_id, source_path, destination_path,
-                state, planned_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                state, planned_at, source_root_path, source_root_object_id,
+                source_object_id, destination_directory_object_id, volume_id,
+                source_file_hash, source_file_size, source_modified_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 request.transaction_id,
                 request.document_id,
-                str(request.ticket.source_file.path),
+                str(request.source_path),
                 str(destination_path),
                 TransactionState.PLANNED,
                 request.timeline.for_state(TransactionState.PLANNED),
+                str(request.ticket.source_root.path),
+                request.ticket.source_root.object_id,
+                request.ticket.source_file.object_id,
+                request.ticket.destination_directory.object_id,
+                request.ticket.source_file.volume_id,
+                evidence.file_hash,
+                evidence.file_size,
+                evidence.modified_at,
             ),
         )
         _insert_event(
@@ -111,7 +122,7 @@ def record_plan(
 
 def transition(
     connection: sqlite3.Connection,
-    request: MoveRequest,
+    request: MoveContext,
     state: TransactionState,
     outcome: TransitionOutcome | None = None,
 ) -> None:

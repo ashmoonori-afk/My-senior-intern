@@ -17,7 +17,6 @@ from senior_intern.core.audit import (
 )
 from senior_intern.core.database import open_database
 from senior_intern.core.ids import AuditEventId, DocumentId, TransactionId
-from senior_intern.core.migrations import LATEST_SCHEMA_VERSION
 from senior_intern.core.models import TransactionState
 
 
@@ -97,7 +96,6 @@ def test_version_two_creates_append_only_tables_and_triggers(tmp_path: Path) -> 
     """Migration 2 installs both immutable event streams."""
     connection = open_database(tmp_path / "audit.db")
     try:
-        assert LATEST_SCHEMA_VERSION == 2
         assert {"audit_events", "move_transaction_events"} <= _names(connection, "table")
         assert {
             "audit_events_no_update",

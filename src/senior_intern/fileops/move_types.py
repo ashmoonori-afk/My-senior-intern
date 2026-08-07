@@ -5,7 +5,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Protocol
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -40,6 +40,9 @@ class MoveTimeline(BaseModel):
     committed_at: str
     failed_at: str
     rollback_required_at: str
+    rolling_back_at: str
+    rolled_back_at: str
+    rollback_failed_at: str
 
     def for_state(self, state: TransactionState) -> str:
         """Return the timestamp dedicated to one lifecycle state."""
@@ -52,6 +55,9 @@ class MoveTimeline(BaseModel):
             TransactionState.COMMITTED: self.committed_at,
             TransactionState.FAILED: self.failed_at,
             TransactionState.ROLLBACK_REQUIRED: self.rollback_required_at,
+            TransactionState.ROLLING_BACK: self.rolling_back_at,
+            TransactionState.ROLLED_BACK: self.rolled_back_at,
+            TransactionState.ROLLBACK_FAILED: self.rollback_failed_at,
         }[state]
 
 
@@ -84,6 +90,59 @@ class MoveRequest(BaseModel):
     def validate_audit_event_id(cls, value: AuditEventId) -> AuditEventId:
         """Require the branded audit identifier."""
         return parse_audit_event_id(str(value))
+
+    @property
+    def source_path(self) -> Path:
+        """Return the identity-bound source path."""
+        return self.ticket.source_file.path
+
+    @property
+    def destination_path(self) -> Path:
+        """Return the nominated destination path."""
+        return self.ticket.destination_directory.path / self.destination_name
+
+
+class MoveContext(Protocol):
+    """Persistence inputs shared by live moves and restart recovery."""
+
+    @property
+    def transaction_id(self) -> TransactionId:
+        """Return the durable transaction identifier."""
+        ...
+
+    @property
+    def document_id(self) -> DocumentId:
+        """Return the durable document identifier."""
+        ...
+
+    @property
+    def audit_event_id(self) -> AuditEventId:
+        """Return the audit event identifier for this operation."""
+        ...
+
+    @property
+    def timeline(self) -> MoveTimeline:
+        """Return the operation lifecycle timestamps."""
+        ...
+
+    @property
+    def source_path(self) -> Path:
+        """Return the original source path."""
+        ...
+
+    @property
+    def destination_path(self) -> Path:
+        """Return the planned destination path."""
+        ...
+
+
+class RollbackContext(MoveContext, Protocol):
+    """Persistence context that knows the forward move state."""
+
+    @property
+    def forward_state(self) -> TransactionState:
+        """Return the durable forward move state being rolled back."""
+        ...
 
 
 @dataclass(frozen=True)

@@ -58,6 +58,9 @@ def test_transaction_state_contract_is_complete() -> None:
         "verified",
         "committed",
         "rollback_required",
+        "rolling_back",
+        "rolled_back",
+        "rollback_failed",
         "failed",
     }
 

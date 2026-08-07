@@ -7,14 +7,16 @@ from typing import Final, cast
 
 from senior_intern.core.schema_v1 import MIGRATION_1
 from senior_intern.core.schema_v2 import MIGRATION_2
+from senior_intern.core.schema_v3 import MIGRATION_3
 
-LATEST_SCHEMA_VERSION = 2
+LATEST_SCHEMA_VERSION = 3
 
 type Migration = tuple[int, tuple[str, ...]]
 
 MIGRATIONS: Final[tuple[Migration, ...]] = (
     (1, MIGRATION_1),
     (2, MIGRATION_2),
+    (3, MIGRATION_3),
 )
 
 

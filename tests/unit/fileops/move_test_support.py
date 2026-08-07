@@ -29,6 +29,9 @@ TIMELINE = MoveTimeline(
     committed_at="2026-08-07T03:00:05Z",
     failed_at="2026-08-07T03:00:06Z",
     rollback_required_at="2026-08-07T03:00:07Z",
+    rolling_back_at="2026-08-07T03:00:08Z",
+    rolled_back_at="2026-08-07T03:00:09Z",
+    rollback_failed_at="2026-08-07T03:00:10Z",
 )
 
 
@@ -43,6 +46,7 @@ class FixtureAtomicMoveBackend:
     fail_revalidation: bool
     fail_verification: bool
     verification_error_code: str | None
+    interrupt_before_rename: bool
     interrupt_after_rename: bool
     verification_hook: Callable[[], None] | None
     moved_identity: tuple[int, int] | None
@@ -54,6 +58,7 @@ class FixtureAtomicMoveBackend:
         self.fail_revalidation = False
         self.fail_verification = False
         self.verification_error_code = None
+        self.interrupt_before_rename = False
         self.interrupt_after_rename = False
         self.verification_hook = None
         self.moved_identity = None
@@ -75,6 +80,8 @@ class FixtureAtomicMoveBackend:
         if destination.exists():
             error_code = "destination_exists"
             raise MoveBackendError(error_code)
+        if self.interrupt_before_rename:
+            raise SimulatedCrash
         _ = ticket.source_file.path.rename(destination)
         destination_stat = destination.stat()
         self.moved_identity = (destination_stat.st_dev, destination_stat.st_ino)

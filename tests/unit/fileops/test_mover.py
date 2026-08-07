@@ -107,7 +107,7 @@ def test_atomic_move_commits_ordered_state_and_document_path(tmp_path: Path) -> 
     source_read = next(
         index
         for index, statement in enumerate(statements)
-        if "SELECT current_path FROM documents" in statement
+        if "SELECT current_path, file_hash" in statement
     )
     assert plan_begin < source_read
     connection.close()
