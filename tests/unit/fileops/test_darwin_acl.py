@@ -30,16 +30,19 @@ class _CFunction(Protocol):
 
 
 def test_real_darwin_probe_rejects_nontrivial_acl(
-    tmp_path: Path,
+    darwin_trusted_tmp_path: Path,
 ) -> None:
     """An extended ACL cannot make a namespace look exclusively writable."""
     if sys.platform != "darwin":
-        probe = DarwinPathProbe(source_root=tmp_path)
+        probe = DarwinPathProbe(source_root=darwin_trusted_tmp_path)
         with pytest.raises(PathProbeError):
-            _ = probe.inspect(tmp_path, PathRole.SOURCE_ROOT)
+            _ = probe.inspect(
+                darwin_trusted_tmp_path,
+                PathRole.SOURCE_ROOT,
+            )
         return
-    source_root = tmp_path / "source"
-    destination = tmp_path / "destination"
+    source_root = darwin_trusted_tmp_path / "source"
+    destination = darwin_trusted_tmp_path / "destination"
     source_root.mkdir()
     destination.mkdir()
     source_file = source_root / "document.pdf"
@@ -64,13 +67,13 @@ def test_real_darwin_probe_rejects_nontrivial_acl(
 
 
 def test_real_darwin_probe_accepts_deny_only_acl(
-    tmp_path: Path,
+    darwin_trusted_tmp_path: Path,
 ) -> None:
     """A deny-only system-style ACL does not create a mutation principal."""
     if sys.platform != "darwin":
         return
-    source_root = tmp_path / "deny-source"
-    destination = tmp_path / "deny-destination"
+    source_root = darwin_trusted_tmp_path / "deny-source"
+    destination = darwin_trusted_tmp_path / "deny-destination"
     source_root.mkdir()
     destination.mkdir()
     source_file = source_root / "document.pdf"

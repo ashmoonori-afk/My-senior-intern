@@ -155,9 +155,10 @@ def test_darwin_backend_error_becomes_typed_probe_failure(
 
 
 def test_real_darwin_probe_is_platform_gated_and_accepts_fixture(
-    tmp_path: Path,
+    darwin_trusted_tmp_path: Path,
 ) -> None:
     """The real adapter rejects other OSes and accepts a local macOS fixture."""
+    tmp_path = darwin_trusted_tmp_path
     source_root = tmp_path / "source"
     destination = tmp_path / "destination"
     source_root.mkdir()
