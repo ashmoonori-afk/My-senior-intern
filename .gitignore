@@ -21,6 +21,7 @@ htmlcov/
 build/
 dist/
 *.spec
+*.dylib
 
 # Local application state and secrets
 *.db

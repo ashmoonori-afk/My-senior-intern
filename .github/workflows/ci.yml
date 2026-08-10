@@ -26,6 +26,14 @@ jobs:
         run: uv python install 3.12
       - name: Install dependencies
         run: uv sync --all-groups --locked
+      - name: Build macOS probe helper
+        if: runner.os == 'macOS'
+        run: >-
+          clang -fobjc-arc -Wall -Wextra -Werror -dynamiclib
+          -arch arm64 -arch x86_64 -mmacosx-version-min=11.0
+          -framework Foundation -framework FileProvider
+          src/senior_intern/fileops/native/omt_darwin_probe.m
+          -o src/senior_intern/fileops/native/libomt_darwin_probe.dylib
       - name: Lint
         run: uv run ruff check src tests
       - name: Format check
