@@ -44,7 +44,10 @@ def test_real_darwin_probe_rejects_nontrivial_acl(
     destination.mkdir()
     source_file = source_root / "document.pdf"
     _ = source_file.write_bytes(b"acl fixture")
-    _add_acl(source_root)
+    _add_acl(
+        source_root,
+        "everyone allow add_file,delete_child",
+    )
     request = PathPolicyRequest(
         source_root=source_root,
         source_file=source_file,
@@ -60,7 +63,34 @@ def test_real_darwin_probe_rejects_nontrivial_acl(
     assert source_file.read_bytes() == b"acl fixture"
 
 
-def _add_acl(path: Path) -> None:
+def test_real_darwin_probe_accepts_deny_only_acl(
+    tmp_path: Path,
+) -> None:
+    """A deny-only system-style ACL does not create a mutation principal."""
+    if sys.platform != "darwin":
+        return
+    source_root = tmp_path / "deny-source"
+    destination = tmp_path / "deny-destination"
+    source_root.mkdir()
+    destination.mkdir()
+    source_file = source_root / "document.pdf"
+    _ = source_file.write_bytes(b"deny acl fixture")
+    _add_acl(source_root, "everyone deny delete")
+    request = PathPolicyRequest(
+        source_root=source_root,
+        source_file=source_file,
+        destination_directory=destination,
+    )
+
+    decision = evaluate_path_policy(
+        request,
+        probe=DarwinPathProbe(source_root=source_root),
+    )
+
+    assert decision.allowed
+
+
+def _add_acl(path: Path, entry: str) -> None:
     """Invoke the fixed macOS chmod ACL command through libc."""
     library = ctypes.CDLL(None)
     system = cast("_CFunction", cast("object", library.system))
@@ -69,7 +99,7 @@ def _add_acl(path: Path) -> None:
         (
             "/bin/chmod",
             "+a",
-            shlex.quote("everyone allow add_file,delete_child"),
+            shlex.quote(entry),
             shlex.quote(str(path)),
         )
     )
