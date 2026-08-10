@@ -168,17 +168,13 @@ int omt_darwin_url_inspect(
         NSString *volumeUUID = values[NSURLVolumeUUIDStringKey];
         id volumeIdentifier = values[NSURLVolumeIdentifierKey];
         id objectIdentifier = values[NSURLFileResourceIdentifierKey];
-        if (
-            values == nil
-            || error != nil
-            || isLocal == nil
-            || isUbiquitous == nil
-            || volumeUUID == nil
-            || volumeIdentifier == nil
-            || objectIdentifier == nil
-        ) {
-            return -4;
-        }
+        if (values == nil) return -41;
+        if (error != nil) return -42;
+        if (isLocal == nil) return -43;
+        if (isUbiquitous == nil) return -44;
+        if (volumeUUID == nil) return -45;
+        if (volumeIdentifier == nil) return -46;
+        if (objectIdentifier == nil) return -47;
         output->is_local = isLocal.boolValue ? 1 : 0;
         output->is_ubiquitous = isUbiquitous.boolValue ? 1 : 0;
         if (isUbiquitous.boolValue) {
