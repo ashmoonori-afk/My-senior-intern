@@ -46,7 +46,8 @@ int omt_trusted_path_stat(
         path == nil
         || output == NULL
         || !path.isAbsolutePath
-        || ![path.stringByStandardizingPath isEqualToString:path]
+        || [path containsString:@"//"]
+        || (path.length > 1 && [path hasSuffix:@"/"])
     ) {
         return -1;
     }
