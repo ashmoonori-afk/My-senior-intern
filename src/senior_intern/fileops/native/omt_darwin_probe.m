@@ -172,9 +172,9 @@ int omt_darwin_url_inspect(
         if (error != nil) return -42;
         if (isLocal == nil) return -43;
         if (isUbiquitous == nil) {
-            error = nil;
-            BOOL found = [url getResourceValue:&isUbiquitous forKey:NSURLIsUbiquitousItemKey error:&error];
-            if (!found || error != nil || isUbiquitous == nil) return -44;
+            isUbiquitous = @(
+                [[NSFileManager defaultManager] isUbiquitousItemAtURL:url]
+            );
         }
         if (volumeUUID == nil) return -45;
         if (volumeIdentifier == nil) return -46;
