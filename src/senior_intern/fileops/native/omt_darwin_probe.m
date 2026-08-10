@@ -90,6 +90,12 @@ static int omt_file_provider_state(NSURL *url, uint32_t timeout_ms) {
                   if (error == nil && itemIdentifier != nil && domainIdentifier != nil) {
                       result = OMT_FP_MANAGED;
                   } else if (
+                      error == nil
+                      && itemIdentifier == nil
+                      && domainIdentifier == nil
+                  ) {
+                      result = OMT_FP_NOT_MANAGED;
+                  } else if (
                       error != nil
                       && [error.domain isEqualToString:NSCocoaErrorDomain]
                       && error.code == NSFileNoSuchFileError
