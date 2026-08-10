@@ -2,6 +2,7 @@
 
 #import "omt_darwin_trust.h"
 
+#include <errno.h>
 #include <sys/acl.h>
 #include <unistd.h>
 
@@ -16,7 +17,7 @@ static int omt_has_allow_acl(const char *path) {
         ACL_FIRST_ENTRY,
         &entry
     );
-    while (result == 1) {
+    while (result == 0) {
         acl_tag_t tag;
         if (acl_get_tag_type(entry, &tag) != 0) {
             acl_free(access_list);
@@ -32,8 +33,9 @@ static int omt_has_allow_acl(const char *path) {
             &entry
         );
     }
+    int final_errno = errno;
     acl_free(access_list);
-    return result < 0 ? -1 : 0;
+    return result == -1 && final_errno == EINVAL ? 0 : -1;
 }
 
 int omt_trusted_path_stat(
