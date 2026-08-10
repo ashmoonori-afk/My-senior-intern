@@ -85,17 +85,23 @@ static int omt_has_untrusted_write_acl(
         }
         if (tag == ACL_EXTENDED_ALLOW) {
             int mutates = omt_has_mutation_permission(entry);
-            int trusted = omt_acl_principal_is_trusted(
-                entry,
-                trusted_uid
-            );
-            if (mutates < 0 || trusted < 0) {
+            if (mutates < 0) {
                 acl_free(access_list);
                 return -1;
             }
-            if (mutates == 1 && trusted == 0) {
-                acl_free(access_list);
-                return 1;
+            if (mutates == 1) {
+                int trusted = omt_acl_principal_is_trusted(
+                    entry,
+                    trusted_uid
+                );
+                if (trusted < 0) {
+                    acl_free(access_list);
+                    return -1;
+                }
+                if (trusted == 0) {
+                    acl_free(access_list);
+                    return 1;
+                }
             }
         }
         result = acl_get_entry(
