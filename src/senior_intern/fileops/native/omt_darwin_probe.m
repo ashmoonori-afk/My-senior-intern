@@ -141,13 +141,16 @@ int omt_darwin_url_inspect(
             return -2;
         }
         NSString *path = [NSString stringWithUTF8String:utf8_path];
+        int trust_result = omt_trusted_path_stat(path, &path_before);
+        if (trust_result != 0) {
+            return -300 + trust_result;
+        }
         if (
-            omt_trusted_path_stat(path, &path_before) != 0
-            || before.st_dev != path_before.st_dev
+            before.st_dev != path_before.st_dev
             || before.st_ino != path_before.st_ino
             || before.st_mode != path_before.st_mode
         ) {
-            return -3;
+            return -399;
         }
         NSURL *url = [NSURL fileURLWithPath:path];
         NSArray<NSURLResourceKey> *keys = @[
@@ -216,8 +219,9 @@ int omt_darwin_url_inspect(
         if (output->file_provider_state == OMT_FP_UNKNOWN) {
             return -6;
         }
-        if (omt_trusted_path_stat(path, &path_after) != 0) {
-            return -7;
+        trust_result = omt_trusted_path_stat(path, &path_after);
+        if (trust_result != 0) {
+            return -700 + trust_result;
         }
         if (
             before.st_dev != path_after.st_dev

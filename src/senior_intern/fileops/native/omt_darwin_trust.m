@@ -54,15 +54,23 @@ int omt_trusted_path_stat(
     NSString *current = @"/";
     uid_t trusted_uid = geteuid();
     struct stat root_stat;
-    if (
-        lstat("/", &root_stat) != 0
-        || S_ISLNK(root_stat.st_mode)
-        || omt_has_allow_acl("/") != 0
-        || (root_stat.st_uid != 0 && root_stat.st_uid != trusted_uid)
-        || (root_stat.st_mode & (S_IWGRP | S_IWOTH)) != 0
-        || !S_ISDIR(root_stat.st_mode)
-    ) {
-        return -1;
+    if (lstat("/", &root_stat) != 0) {
+        return -2;
+    }
+    if (S_ISLNK(root_stat.st_mode)) {
+        return -3;
+    }
+    if (omt_has_allow_acl("/") != 0) {
+        return -4;
+    }
+    if (root_stat.st_uid != 0 && root_stat.st_uid != trusted_uid) {
+        return -5;
+    }
+    if ((root_stat.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+        return -6;
+    }
+    if (!S_ISDIR(root_stat.st_mode)) {
+        return -7;
     }
     *output = root_stat;
     for (NSUInteger index = 0; index < components.count; index++) {
@@ -79,21 +87,29 @@ int omt_trusted_path_stat(
         current = [current stringByAppendingPathComponent:component];
         struct stat current_stat;
         const char *current_path = current.fileSystemRepresentation;
+        if (lstat(current_path, &current_stat) != 0) {
+            return -11;
+        }
+        if (S_ISLNK(current_stat.st_mode)) {
+            return -12;
+        }
+        if (omt_has_allow_acl(current_path) != 0) {
+            return -13;
+        }
         if (
-            lstat(current_path, &current_stat) != 0
-            || S_ISLNK(current_stat.st_mode)
-            || omt_has_allow_acl(current_path) != 0
-            || (
-                current_stat.st_uid != 0
-                && current_stat.st_uid != trusted_uid
-            )
-            || (current_stat.st_mode & (S_IWGRP | S_IWOTH)) != 0
-            || (
-                index + 1 < components.count
-                && !S_ISDIR(current_stat.st_mode)
-            )
+            current_stat.st_uid != 0
+            && current_stat.st_uid != trusted_uid
         ) {
-            return -1;
+            return -14;
+        }
+        if ((current_stat.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+            return -15;
+        }
+        if (
+            index + 1 < components.count
+            && !S_ISDIR(current_stat.st_mode)
+        ) {
+            return -16;
         }
         *output = current_stat;
     }
