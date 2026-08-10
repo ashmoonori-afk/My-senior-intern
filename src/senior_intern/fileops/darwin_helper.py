@@ -3,6 +3,7 @@
 """Typed loader for the bundled Objective-C Darwin URL helper."""
 
 import ctypes
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,6 +104,7 @@ class DarwinUrlHelper:
         )
         function.argtypes = [
             ctypes.c_int,
+            ctypes.c_char_p,
             ctypes.c_uint32,
             ctypes.POINTER(DarwinUrlInfoStruct),
         ]
@@ -110,19 +112,24 @@ class DarwinUrlHelper:
         self._inspect = function
         self._timeout_ms = timeout_ms
 
-    def inspect(self, file_descriptor: int) -> DarwinUrlInfo:
-        """Read FD-bound URL metadata without requesting document contents."""
+    def inspect(
+        self,
+        file_descriptor: int,
+        path: Path,
+    ) -> DarwinUrlInfo:
+        """Read identity-bound URL metadata in a trusted namespace."""
         output = DarwinUrlInfoStruct()
         result = cast(
             "int",
             self._inspect(
                 file_descriptor,
+                os.fsencode(path),
                 self._timeout_ms,
                 ctypes.byref(output),
             ),
         )
         if result != 0:
-            message = "Darwin FD-bound URL inspection failed"
+            message = "Darwin identity-bound URL inspection failed"
             raise DarwinProbeBackendError(message)
         state_value = int(cast("int", output.file_provider_state))
         try:

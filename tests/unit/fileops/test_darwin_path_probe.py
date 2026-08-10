@@ -219,6 +219,20 @@ def test_real_darwin_probe_is_platform_gated_and_accepts_fixture(
         ),
         probe=probe,
     )
+    untrusted_root = tmp_path / "untrusted"
+    untrusted_root.mkdir(mode=0o777)
+    untrusted_root.chmod(0o777)
+    untrusted_file = untrusted_root / "untrusted.pdf"
+    _ = untrusted_file.write_bytes(b"untrusted namespace")
+    untrusted_decision = evaluate_path_policy(
+        request.model_copy(
+            update={
+                "source_root": untrusted_root,
+                "source_file": untrusted_file,
+            }
+        ),
+        probe=DarwinPathProbe(source_root=untrusted_root),
+    )
 
     assert decision.allowed
     assert missing.denial is PolicyDenial.NOT_FOUND
@@ -227,5 +241,6 @@ def test_real_darwin_probe_is_platform_gated_and_accepts_fixture(
     assert direct_file_link_decision.denial is PolicyDenial.LINK
     assert linked_root_decision.denial is PolicyDenial.LINK
     assert nested_destination_link_decision.denial is PolicyDenial.LINK
+    assert untrusted_decision.denial is PolicyDenial.API_ERROR
     assert source_file.read_bytes() == b"darwin probe fixture"
     assert MNT_LOCAL != 0

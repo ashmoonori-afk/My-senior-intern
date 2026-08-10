@@ -56,8 +56,13 @@ class FakeDarwinUrlInspector(DarwinUrlInspector):
         self.results = results
 
     @override
-    def inspect(self, file_descriptor: int) -> DarwinUrlInfo:
+    def inspect(
+        self,
+        file_descriptor: int,
+        path: Path,
+    ) -> DarwinUrlInfo:
         """Pop the next URL result."""
+        del path
         return self.results[file_descriptor].pop(0)
 
 
@@ -155,7 +160,7 @@ def inspect_native_fixture(
     file_urls: list[DarwinUrlInfo] | None = None,
 ) -> DarwinSnapshot:
     """Compose one source-file snapshot from injected paired sweeps."""
-    _source_root, source_file, root_info, file_info, root_url, file_url = fixture
+    source_root, source_file, root_info, file_info, root_url, file_url = fixture
     metadata = FakeDarwinMetadataReader(
         {
             _ROOT_FD: list(root_infos or [root_info, root_info]),
@@ -170,8 +175,8 @@ def inspect_native_fixture(
     )
     return inspect_opened(
         source_file,
+        source_root,
         PathRole.SOURCE_FILE,
         (_ROOT_FD, _FILE_FD),
-        metadata,
-        urls,
+        (metadata, urls),
     )

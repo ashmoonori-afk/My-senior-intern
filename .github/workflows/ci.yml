@@ -33,6 +33,7 @@ jobs:
           -arch arm64 -arch x86_64 -mmacosx-version-min=11.0
           -framework Foundation -framework FileProvider
           src/senior_intern/fileops/native/omt_darwin_probe.m
+          src/senior_intern/fileops/native/omt_darwin_trust.m
           -o src/senior_intern/fileops/native/libomt_darwin_probe.dylib
       - name: Lint
         run: uv run ruff check src tests

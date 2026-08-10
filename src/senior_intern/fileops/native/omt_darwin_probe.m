@@ -2,6 +2,7 @@
 
 #import <FileProvider/FileProvider.h>
 #import <Foundation/Foundation.h>
+#import "omt_darwin_trust.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -111,10 +112,16 @@ static int omt_file_provider_state(NSURL *url, uint32_t timeout_ms) {
 
 int omt_darwin_url_inspect(
     int file_descriptor,
+    const char *utf8_path,
     uint32_t timeout_ms,
     OMTDarwinUrlInfo *output
 ) {
-    if (file_descriptor < 0 || output == NULL || timeout_ms == 0) {
+    if (
+        file_descriptor < 0
+        || utf8_path == NULL
+        || output == NULL
+        || timeout_ms == 0
+    ) {
         return -1;
     }
     memset(output, 0, sizeof(*output));
@@ -122,32 +129,21 @@ int omt_darwin_url_inspect(
     @autoreleasepool {
         struct stat before;
         struct stat after;
-        struct stat descriptor_before;
-        struct stat descriptor_after;
+        struct stat path_before;
+        struct stat path_after;
         if (fstat(file_descriptor, &before) != 0) {
             return -1;
         }
-        NSString *descriptorPath = [NSString
-            stringWithFormat:@"/dev/fd/%d",
-            file_descriptor
-        ];
+        NSString *path = [NSString stringWithUTF8String:utf8_path];
         if (
-            descriptorPath == nil
-            || stat(
-                descriptorPath.fileSystemRepresentation,
-                &descriptor_before
-            ) != 0
-            || before.st_dev != descriptor_before.st_dev
-            || before.st_ino != descriptor_before.st_ino
-            || before.st_mode != descriptor_before.st_mode
+            omt_trusted_path_stat(path, &path_before) != 0
+            || before.st_dev != path_before.st_dev
+            || before.st_ino != path_before.st_ino
+            || before.st_mode != path_before.st_mode
         ) {
             return -1;
         }
-        NSURL *descriptorURL = [NSURL fileURLWithPath:descriptorPath];
-        NSURL *url = descriptorURL.fileReferenceURL;
-        if (url == nil) {
-            return -1;
-        }
+        NSURL *url = [NSURL fileURLWithPath:path];
         NSArray<NSURLResourceKey> *keys = @[
             NSURLVolumeIsLocalKey,
             NSURLVolumeIdentifierKey,
@@ -213,13 +209,10 @@ int omt_darwin_url_inspect(
             omt_file_provider_state(url, timeout_ms);
         if (
             output->file_provider_state == OMT_FP_UNKNOWN
-            || stat(
-                descriptorPath.fileSystemRepresentation,
-                &descriptor_after
-            ) != 0
-            || before.st_dev != descriptor_after.st_dev
-            || before.st_ino != descriptor_after.st_ino
-            || before.st_mode != descriptor_after.st_mode
+            || omt_trusted_path_stat(path, &path_after) != 0
+            || before.st_dev != path_after.st_dev
+            || before.st_ino != path_after.st_ino
+            || before.st_mode != path_after.st_mode
             || fstat(file_descriptor, &after) != 0
             || before.st_dev != after.st_dev
             || before.st_ino != after.st_ino

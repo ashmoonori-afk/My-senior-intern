@@ -51,10 +51,10 @@ class NativeDarwinProbeBackend:
             with open_role(path, role, source_root) as descriptors:
                 return inspect_opened(
                     path,
+                    source_root,
                     role,
                     descriptors,
-                    api,
-                    url_inspector,
+                    (api, url_inspector),
                 )
         except FileNotFoundError:
             return missing_snapshot(path, role)

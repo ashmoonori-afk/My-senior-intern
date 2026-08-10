@@ -12,6 +12,7 @@ from senior_intern.fileops.darwin_api_types import (
 )
 from senior_intern.fileops.darwin_helper import DarwinUrlInfo
 from senior_intern.fileops.darwin_types import (
+    DarwinProbeBackendError,
     DarwinSnapshot,
     FileProviderState,
 )
@@ -23,23 +24,51 @@ _SOURCE_CHAIN_MINIMUM = 2
 class DarwinUrlInspector(Protocol):
     """Inspect Foundation and File Provider URL facts."""
 
-    def inspect(self, file_descriptor: int) -> DarwinUrlInfo:
-        """Return complete URL metadata bound to a retained descriptor."""
+    def inspect(
+        self,
+        file_descriptor: int,
+        path: Path,
+    ) -> DarwinUrlInfo:
+        """Return URL metadata bound to a retained descriptor and path."""
         ...
+
+
+DarwinReaders = tuple[DarwinMetadataReader, DarwinUrlInspector]
 
 
 def inspect_opened(
     path: Path,
+    source_root: Path,
     role: PathRole,
     descriptors: tuple[int, ...],
-    api: DarwinMetadataReader,
-    url_inspector: DarwinUrlInspector,
+    readers: DarwinReaders,
 ) -> DarwinSnapshot:
     """Perform paired full sweeps over every retained descriptor."""
+    api, url_inspector = readers
+    descriptor_paths = _descriptor_paths(
+        path,
+        source_root,
+        role,
+        descriptors,
+    )
     before = tuple(api.inspect_fd(descriptor) for descriptor in descriptors)
-    before_urls = tuple(url_inspector.inspect(descriptor) for descriptor in descriptors)
+    before_urls = tuple(
+        url_inspector.inspect(descriptor, descriptor_path)
+        for descriptor, descriptor_path in zip(
+            descriptors,
+            descriptor_paths,
+            strict=True,
+        )
+    )
     after = tuple(api.inspect_fd(descriptor) for descriptor in descriptors)
-    after_urls = tuple(url_inspector.inspect(descriptor) for descriptor in descriptors)
+    after_urls = tuple(
+        url_inspector.inspect(descriptor, descriptor_path)
+        for descriptor, descriptor_path in zip(
+            descriptors,
+            descriptor_paths,
+            strict=True,
+        )
+    )
     target = before[-1]
     target_url = before_urls[-1]
     coherent = (
@@ -125,6 +154,26 @@ def _within_opened_root(
     infos: tuple[DarwinObjectInfo, ...],
 ) -> bool:
     return role is not PathRole.SOURCE_FILE or len(infos) >= _SOURCE_CHAIN_MINIMUM
+
+
+def _descriptor_paths(
+    path: Path,
+    source_root: Path,
+    role: PathRole,
+    descriptors: tuple[int, ...],
+) -> tuple[Path, ...]:
+    if role is not PathRole.SOURCE_FILE:
+        return (path,)
+    relative = path.relative_to(source_root)
+    current = source_root
+    paths = [current]
+    for component in relative.parts:
+        current /= component
+        paths.append(current)
+    if len(paths) != len(descriptors):
+        message = "Darwin descriptor path chain is inconsistent"
+        raise DarwinProbeBackendError(message)
+    return tuple(paths)
 
 
 def _url_matches_object(

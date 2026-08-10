@@ -3,6 +3,7 @@
 """Objective-C Darwin helper loader validation tests."""
 
 import ctypes
+from pathlib import Path
 from typing import cast, override
 
 import pytest
@@ -44,7 +45,7 @@ class FakeDarwinHelperFunction(DarwinHelperFunction):
     @override
     def __call__(self, *args: object) -> object:
         """Write a complete C response before returning."""
-        raw_pointer = cast("ctypes.c_void_p", args[2])
+        raw_pointer = cast("ctypes.c_void_p", args[3])
         output_pointer = ctypes.cast(
             raw_pointer,
             ctypes.POINTER(DarwinUrlInfoStruct),
@@ -78,11 +79,11 @@ class FakeDarwinHelperFunction(DarwinHelperFunction):
         return self.result
 
 
-def test_darwin_helper_parses_complete_response() -> None:
+def test_darwin_helper_parses_complete_response(tmp_path: Path) -> None:
     """A complete helper response preserves all identity evidence."""
     helper = DarwinUrlHelper(inspect_function=FakeDarwinHelperFunction())
 
-    result = helper.inspect(42)
+    result = helper.inspect(42, tmp_path)
 
     assert result.is_local
     assert result.file_provider_state is FileProviderState.NOT_MANAGED
@@ -101,10 +102,11 @@ def test_darwin_helper_parses_complete_response() -> None:
     ],
 )
 def test_darwin_helper_malformed_or_failed_response_denies(
+    tmp_path: Path,
     function: FakeDarwinHelperFunction,
 ) -> None:
     """Native failures and malformed output never become path facts."""
     helper = DarwinUrlHelper(inspect_function=cast("DarwinHelperFunction", function))
 
     with pytest.raises(DarwinProbeBackendError):
-        _ = helper.inspect(42)
+        _ = helper.inspect(42, tmp_path)
