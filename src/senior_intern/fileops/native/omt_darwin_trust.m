@@ -68,9 +68,12 @@ static int omt_has_untrusted_write_acl(
     const char *path,
     uid_t trusted_uid
 ) {
+    errno = 0;
     acl_t access_list = acl_get_link_np(path, ACL_TYPE_EXTENDED);
     if (access_list == NULL) {
-        return -1;
+        return errno == 0 || errno == ENOENT || errno == ENOATTR
+            ? 0
+            : -1;
     }
     acl_entry_t entry;
     int result = acl_get_entry(
