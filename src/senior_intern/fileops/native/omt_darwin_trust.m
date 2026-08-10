@@ -82,13 +82,13 @@ static int omt_has_untrusted_write_acl(
         acl_tag_t tag;
         if (acl_get_tag_type(entry, &tag) != 0) {
             acl_free(access_list);
-            return -1;
+            return -2;
         }
         if (tag == ACL_EXTENDED_ALLOW) {
             int mutates = omt_has_mutation_permission(entry);
             if (mutates < 0) {
                 acl_free(access_list);
-                return -1;
+                return -3;
             }
             if (mutates == 1) {
                 int trusted = omt_acl_principal_is_trusted(
@@ -97,7 +97,7 @@ static int omt_has_untrusted_write_acl(
                 );
                 if (trusted < 0) {
                     acl_free(access_list);
-                    return -1;
+                    return -4;
                 }
                 if (trusted == 0) {
                     acl_free(access_list);
@@ -113,7 +113,7 @@ static int omt_has_untrusted_write_acl(
     }
     int final_errno = errno;
     acl_free(access_list);
-    return result == -1 && final_errno == EINVAL ? 0 : -1;
+    return result == -1 && final_errno == EINVAL ? 0 : -5;
 }
 
 static int omt_root_is_read_only(void) {
@@ -181,13 +181,13 @@ int omt_trusted_path_stat(
         if (S_ISLNK(current_stat.st_mode)) {
             return -12;
         }
-        if (
-            omt_has_untrusted_write_acl(
-                current_path,
-                trusted_uid
-            ) != 0
-        ) {
-            return -13;
+        int acl_result = omt_has_untrusted_write_acl(
+            current_path,
+            trusted_uid
+        );
+        if (acl_result != 0) {
+            int detail = acl_result > 0 ? 1 : 5 - acl_result;
+            return -1300 - ((int)index * 10) - detail;
         }
         if (
             current_stat.st_uid != 0

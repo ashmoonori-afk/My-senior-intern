@@ -61,6 +61,7 @@ def test_real_darwin_probe_rejects_nontrivial_acl(
         request,
         probe=DarwinPathProbe(source_root=source_root),
     )
+    _clear_acl(source_root)
 
     assert decision.denial is PolicyDenial.API_ERROR
     assert source_file.read_bytes() == b"acl fixture"
@@ -89,6 +90,7 @@ def test_real_darwin_probe_accepts_deny_only_acl(
         request,
         probe=DarwinPathProbe(source_root=source_root),
     )
+    _clear_acl(source_root)
 
     assert decision.allowed
 
@@ -106,5 +108,15 @@ def _add_acl(path: Path, entry: str) -> None:
             shlex.quote(str(path)),
         )
     )
+    result = int(cast("int", system(os.fsencode(command))))
+    assert result == 0
+
+
+def _clear_acl(path: Path) -> None:
+    """Remove the test ACL before temporary-directory cleanup."""
+    library = ctypes.CDLL(None)
+    system = cast("_CFunction", cast("object", library.system))
+    system.restype = ctypes.c_int
+    command = f"/bin/chmod -N {shlex.quote(str(path))}"
     result = int(cast("int", system(os.fsencode(command))))
     assert result == 0
