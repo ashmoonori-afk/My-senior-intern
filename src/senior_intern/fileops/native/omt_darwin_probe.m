@@ -138,7 +138,7 @@ int omt_darwin_url_inspect(
         struct stat path_before;
         struct stat path_after;
         if (fstat(file_descriptor, &before) != 0) {
-            return -1;
+            return -2;
         }
         NSString *path = [NSString stringWithUTF8String:utf8_path];
         if (
@@ -147,7 +147,7 @@ int omt_darwin_url_inspect(
             || before.st_ino != path_before.st_ino
             || before.st_mode != path_before.st_mode
         ) {
-            return -1;
+            return -3;
         }
         NSURL *url = [NSURL fileURLWithPath:path];
         NSArray<NSURLResourceKey> *keys = @[
@@ -174,7 +174,7 @@ int omt_darwin_url_inspect(
             || volumeIdentifier == nil
             || objectIdentifier == nil
         ) {
-            return -1;
+            return -4;
         }
         output->is_local = isLocal.boolValue ? 1 : 0;
         output->is_ubiquitous = isUbiquitous.boolValue ? 1 : 0;
@@ -209,22 +209,32 @@ int omt_darwin_url_inspect(
                 &output->volume_resource_length
             ) != 0
         ) {
-            return -1;
+            return -5;
         }
         output->file_provider_state =
             omt_file_provider_state(url, timeout_ms);
+        if (output->file_provider_state == OMT_FP_UNKNOWN) {
+            return -6;
+        }
+        if (omt_trusted_path_stat(path, &path_after) != 0) {
+            return -7;
+        }
         if (
-            output->file_provider_state == OMT_FP_UNKNOWN
-            || omt_trusted_path_stat(path, &path_after) != 0
-            || before.st_dev != path_after.st_dev
+            before.st_dev != path_after.st_dev
             || before.st_ino != path_after.st_ino
             || before.st_mode != path_after.st_mode
-            || fstat(file_descriptor, &after) != 0
-            || before.st_dev != after.st_dev
+        ) {
+            return -8;
+        }
+        if (fstat(file_descriptor, &after) != 0) {
+            return -9;
+        }
+        if (
+            before.st_dev != after.st_dev
             || before.st_ino != after.st_ino
             || before.st_mode != after.st_mode
         ) {
-            return -1;
+            return -10;
         }
         output->path_st_dev = (uint64_t)before.st_dev;
         output->path_st_ino = (uint64_t)before.st_ino;

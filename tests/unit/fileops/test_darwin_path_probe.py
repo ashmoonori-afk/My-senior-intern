@@ -22,6 +22,8 @@ from senior_intern.fileops.path_policy import (
 from tests.unit.fileops.darwin_probe_test_support import (
     FakeDarwinBackend,
     make_fixture,
+    make_untrusted_decision,
+    probe_diagnostic,
 )
 
 
@@ -174,6 +176,7 @@ def test_real_darwin_probe_is_platform_gated_and_accepts_fixture(
         return
 
     decision = evaluate_path_policy(request, probe=probe)
+    diagnostic = probe_diagnostic(probe, source_root)
     missing = evaluate_path_policy(
         request.model_copy(update={"source_file": source_root / "missing.pdf"}),
         probe=probe,
@@ -219,22 +222,9 @@ def test_real_darwin_probe_is_platform_gated_and_accepts_fixture(
         ),
         probe=probe,
     )
-    untrusted_root = tmp_path / "untrusted"
-    untrusted_root.mkdir(mode=0o777)
-    untrusted_root.chmod(0o777)
-    untrusted_file = untrusted_root / "untrusted.pdf"
-    _ = untrusted_file.write_bytes(b"untrusted namespace")
-    untrusted_decision = evaluate_path_policy(
-        request.model_copy(
-            update={
-                "source_root": untrusted_root,
-                "source_file": untrusted_file,
-            }
-        ),
-        probe=DarwinPathProbe(source_root=untrusted_root),
-    )
+    untrusted_decision = make_untrusted_decision(tmp_path, request)
 
-    assert decision.allowed
+    assert decision.allowed, diagnostic
     assert missing.denial is PolicyDenial.NOT_FOUND
     assert source_link_decision.denial is PolicyDenial.LINK
     assert destination_link_decision.denial is PolicyDenial.LINK

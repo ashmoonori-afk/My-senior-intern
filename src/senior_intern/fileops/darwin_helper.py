@@ -129,7 +129,7 @@ class DarwinUrlHelper:
             ),
         )
         if result != 0:
-            message = "Darwin identity-bound URL inspection failed"
+            message = f"Darwin identity-bound URL inspection failed at native stage {result}"
             raise DarwinProbeBackendError(message)
         state_value = int(cast("int", output.file_provider_state))
         try:

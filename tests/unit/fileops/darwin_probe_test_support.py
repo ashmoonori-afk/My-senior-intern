@@ -7,6 +7,7 @@ from typing import override
 
 from senior_intern.fileops.darwin_path_probe import (
     MNT_LOCAL,
+    DarwinPathProbe,
     DarwinProbeBackend,
     DarwinProbeBackendError,
     DarwinSnapshot,
@@ -14,8 +15,11 @@ from senior_intern.fileops.darwin_path_probe import (
 )
 from senior_intern.fileops.path_policy import (
     ObjectKind,
+    PathPolicyDecision,
     PathPolicyRequest,
+    PathProbeError,
     PathRole,
+    evaluate_path_policy,
 )
 
 
@@ -46,6 +50,38 @@ class FakeDarwinBackend(DarwinProbeBackend):
             message = "fstatfs failed"
             raise DarwinProbeBackendError(message)
         return self.snapshots[(path, role)]
+
+
+def probe_diagnostic(
+    probe: DarwinPathProbe,
+    path: Path,
+) -> str:
+    """Expose one native failure stage in CI assertion output."""
+    try:
+        return repr(probe.inspect(path, PathRole.SOURCE_ROOT))
+    except PathProbeError as error:
+        return str(error)
+
+
+def make_untrusted_decision(
+    tmp_path: Path,
+    request: PathPolicyRequest,
+) -> PathPolicyDecision:
+    """Evaluate a group/world-writable Darwin namespace."""
+    source_root = tmp_path / "untrusted"
+    source_root.mkdir(mode=0o777)
+    source_root.chmod(0o777)
+    source_file = source_root / "untrusted.pdf"
+    _ = source_file.write_bytes(b"untrusted namespace")
+    return evaluate_path_policy(
+        request.model_copy(
+            update={
+                "source_root": source_root,
+                "source_file": source_file,
+            }
+        ),
+        probe=DarwinPathProbe(source_root=source_root),
+    )
 
 
 def make_snapshot(
