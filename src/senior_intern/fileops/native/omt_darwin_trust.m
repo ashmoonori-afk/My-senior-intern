@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <membership.h>
 #include <sys/acl.h>
+#include <sys/mount.h>
 #include <unistd.h>
 
 static int omt_has_mutation_permission(acl_entry_t entry) {
@@ -115,6 +116,12 @@ static int omt_has_untrusted_write_acl(
     return result == -1 && final_errno == EINVAL ? 0 : -1;
 }
 
+static int omt_root_is_read_only(void) {
+    struct statfs filesystem;
+    return statfs("/", &filesystem) == 0
+        && (filesystem.f_flags & MNT_RDONLY) != 0;
+}
+
 int omt_trusted_path_stat(
     NSString *path,
     struct stat *output
@@ -138,7 +145,10 @@ int omt_trusted_path_stat(
     if (S_ISLNK(root_stat.st_mode)) {
         return -3;
     }
-    if (omt_has_untrusted_write_acl("/", trusted_uid) != 0) {
+    if (
+        omt_has_untrusted_write_acl("/", trusted_uid) != 0
+        && !omt_root_is_read_only()
+    ) {
         return -4;
     }
     if (root_stat.st_uid != 0 && root_stat.st_uid != trusted_uid) {
